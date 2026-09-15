@@ -41,7 +41,10 @@ function tcApiUrl(path) {
 
 async function tcErrBody(res) {
   let text = "";
+  let headersObj = {};
+  try { res.headers.forEach((v, k) => { headersObj[k] = v; }); } catch (e) {}
   try { text = await res.text(); } catch (e) { /* ignorera */ }
+  console.warn("[4D] Fel-svar från Trimble:", { url: res.url, status: res.status, statusText: res.statusText, headers: headersObj, body: text.slice(0, 1000) || "(tomt)" });
   if (!text) return "";
   try {
     const j = JSON.parse(text);
@@ -116,6 +119,11 @@ async function ensureDataFolder() {
   }
   const folder = await createRes.json();
   _dataFolderIdCache = folder.id;
+  // Trimble Connects filsystem verkar behöva en kort stund innan en precis
+  // nyskapad mapp är redo att ta emot uppladdningar — utan denna paus gav
+  // det första sparförsöket direkt efter mappskapandet ett generiskt
+  // "File service commit error" (500) från /files/fs/commit.
+  await new Promise(r => setTimeout(r, 1500));
   return folder.id;
 }
 
@@ -167,11 +175,26 @@ async function uploadFileToFolder(folderId, filename, blob) {
   const commitBody = { uploadId };
   if (isMultipart) commitBody.multipart = { upload: { parts } };
 
-  const commitRes = await fetch(tcApiUrl(`/files/fs/commit`), {
+  let commitRes = await fetch(tcApiUrl(`/files/fs/commit`), {
     method: "POST",
     headers: { Authorization: `Bearer ${tcAccessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify(commitBody)
   });
+
+  // Trimbles filtjänst ger ibland ett tillfälligt "File service commit
+  // error" (500) direkt efter en uppladdning, som brukar lyckas vid ett
+  // omedelbart återförsök. Försök en gång till innan vi ger upp.
+  if (!commitRes.ok && commitRes.status === 500) {
+    console.warn("[4D] commit gav 500, försöker igen om 1.5s...");
+    await tcErrBody(commitRes); // loggar detaljer om det första felet
+    await new Promise(r => setTimeout(r, 1500));
+    commitRes = await fetch(tcApiUrl(`/files/fs/commit`), {
+      method: "POST",
+      headers: { Authorization: `Bearer ${tcAccessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(commitBody)
+    });
+  }
+
   if (!commitRes.ok) {
     const body = await tcErrBody(commitRes);
     throw new Error(`Kunde inte slutföra uppladdning (${commitRes.status})${body ? " — " + body : ""}`);
