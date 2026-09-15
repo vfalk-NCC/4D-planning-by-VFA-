@@ -237,8 +237,12 @@ async function saveItemsToTC(itemsToSave) {
   const folderId = await ensureDataFolder();
   const existing = await findDataFile(folderId);
   const blob = new Blob([JSON.stringify(itemsToSave, null, 2)], { type: "application/json" });
-  if (existing) await deleteFile(existing.id);
+  // VIKTIGT: ladda upp den nya filen FÖRST, ta bort den gamla EFTERÅT.
+  // Omvänd ordning (radera först, ladda upp sen) gav konsekvent ett
+  // generiskt "File service commit error" (500) från Trimble — samma
+  // ordning som i den beprövade Quick Viewer-koden (saveZonesNow) löser det.
   await uploadFileToFolder(folderId, TC_CONFIG.DATA_FILE_NAME, blob);
+  if (existing) await deleteFile(existing.id);
 }
 
 function mergeItems(records) {
