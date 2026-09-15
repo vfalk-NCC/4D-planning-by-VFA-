@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8" />
+<title>4D-planering</title>
+<link rel="stylesheet" href="style.css" />
+<script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+  <div id="app">
+
+    <!-- ===== Header ===== -->
+    <header>
+      <h1>4D-planering</h1>
+      <button id="btnSettings" title="Inställningar (färger m.m.)">⚙</button>
+    </header>
+    <div id="tcStatus" class="hint"></div>
+
+    <!-- ===== Koppla markerade objekt ===== -->
+    <section class="panel">
+      <h2>Koppla markering</h2>
+      <p class="hint">Markera objekt i modellen och tryck på knappen för att sätta/ändra planeringsdata.</p>
+      <button id="btnLinkSelection" class="primary">Koppla markerade objekt (<span id="selCount">0</span>)</button>
+      <div id="linkForm" class="hidden">
+        <label>Namn <span class="hint">(t.ex. M10, M12 – valfritt om du kopplar flera samtidigt)</span>
+          <input type="text" id="fName" placeholder="t.ex. M10" />
+        </label>
+        <label>Område
+          <input list="areaList" id="fArea" placeholder="t.ex. Hus A, Plan 2" />
+          <datalist id="areaList"></datalist>
+        </label>
+        <label>Aktivitet
+          <input list="activityList" id="fActivity" placeholder="t.ex. Gjutning" />
+          <datalist id="activityList"></datalist>
+        </label>
+        <label>Entreprenör
+          <input list="contractorList" id="fContractor" placeholder="t.ex. NCC" />
+          <datalist id="contractorList"></datalist>
+        </label>
+        <label>Status
+          <select id="fStatus">
+            <option value="planerad">Planerad</option>
+            <option value="pagaende">Pågående</option>
+            <option value="forsenad">Försenad</option>
+            <option value="klar">Klar</option>
+            <option value="pausad">Pausad</option>
+          </select>
+        </label>
+        <label>Startdatum
+          <input type="date" id="fStart" />
+        </label>
+        <label>Slutdatum
+          <input type="date" id="fEnd" />
+        </label>
+        <div class="row">
+          <button id="btnSaveLink" class="primary">Spara</button>
+          <button id="btnCancelLink">Avbryt</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Tidslinje ===== -->
+    <section class="panel">
+      <h2>Tidslinje</h2>
+      <div class="timeline-controls">
+        <button id="btnPlay" title="Spela upp">▶</button>
+        <input type="date" id="timelineDate" />
+        <input type="range" id="timelineSlider" min="0" max="100" value="0" />
+      </div>
+      <div class="legend">
+        <span><i class="dot" id="dotNotStarted"></i> Ej påbörjad</span>
+        <span><i class="dot" id="dotInProgress"></i> Pågående</span>
+        <span><i class="dot" id="dotDone"></i> Färdigställd</span>
+      </div>
+    </section>
+
+    <!-- ===== Filter ===== -->
+    <section class="panel">
+      <h2>Filter</h2>
+      <label>Område
+        <select id="filterArea" multiple></select>
+      </label>
+      <label>Aktivitet
+        <select id="filterActivity" multiple></select>
+      </label>
+      <label>Entreprenör
+        <select id="filterContractor" multiple></select>
+      </label>
+      <label>Status
+        <select id="filterStatus" multiple></select>
+      </label>
+      <label>Kommande veckor
+        <select id="filterWeeks">
+          <option value="">Visa allt</option>
+          <option value="1">Nästa vecka</option>
+          <option value="2">Nästa 2 veckor</option>
+          <option value="4">Nästa 4 veckor</option>
+        </select>
+      </label>
+      <div class="row">
+        <button id="btnApplyFilter" class="primary">Visa filtrerat</button>
+        <button id="btnClearFilter">Rensa filter</button>
+      </div>
+      <div id="filterMsg" class="hint"></div>
+    </section>
+
+    <!-- ===== Excel-import ===== -->
+    <section class="panel">
+      <h2>Excel-import</h2>
+      <p class="hint">Kolumner: ObjektID, Område, Aktivitet, Entreprenör, Status, Startdatum, Slutdatum</p>
+      <input type="file" id="excelFile" accept=".xlsx,.xls" />
+      <div class="row">
+        <button id="btnImportExcel" class="primary">Importera</button>
+        <label class="switch"><input type="checkbox" id="autoSync" /> Bevaka fil för automatisk uppdatering</label>
+      </div>
+      <div id="importStatus" class="hint"></div>
+    </section>
+
+    <!-- ===== Objektlista ===== -->
+    <section class="panel">
+      <h2>Planerade objekt (<span id="itemCount">0</span>)</h2>
+      <input type="text" id="itemSearch" placeholder="Sök på namn, område, aktivitet..." />
+      <div id="itemList" class="item-list"></div>
+    </section>
+
+  </div>
+
+  <!-- Inställningsdialog -->
+  <div id="settingsDialog" class="dialog hidden">
+    <div class="dialog-box">
+      <h2>Inställningar</h2>
+      <label>Färg – ej påbörjad <input type="color" id="colorNotStarted" /></label>
+      <label>Färg – pågående <input type="color" id="colorInProgress" /></label>
+      <label>Färg – färdigställd <input type="color" id="colorDone" /></label>
+      <p class="hint">Data lagras i mappen "4D-planering-data" i det här Trimble Connect-projektet.</p>
+      <div class="row">
+        <button id="btnSaveSettings" class="primary">Spara</button>
+        <button id="btnCloseSettings">Stäng</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
